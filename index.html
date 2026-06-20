@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Budget Tracker</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --box-bg: #ffffff;
+            --text-main: #333333;
+            --income-color: #2ecc71;
+            --expense-color: #e74c3c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            background-color: var(--box-bg);
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .balance-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .balance-container h3 {
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            color: #777;
+        }
+
+        #balance {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        h3 {
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 2rem;
+        }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .list {
+            list-style-type: none;
+        }
+
+        .list li {
+            background-color: #f9f9f9;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-right: 5px solid transparent;
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .list li.income {
+            border-right-color: var(--income-color);
+        }
+
+        .list li.expense {
+            border-right-color: var(--expense-color);
+        }
+
+        .delete-btn {
+            background-color: transparent;
+            color: var(--expense-color);
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        .delete-btn:hover {
+            color: #c0392b;
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Budget Tracker</h1>
+        
+        <div class="balance-container">
+            <h3>Your Balance</h3>
+            <h1 id="balance">$0.00</h1>
+        </div>
+
+        <h3>Add Transaction</h3>
+        <form id="form">
+            <input type="text" id="description" placeholder="Description (e.g. Groceries)" required>
+            <input type="number" id="amount" placeholder="Amount (e.g. 50)" step="0.01" required>
+            <select id="type">
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+            </select>
+            <button type="submit">Add Transaction</button>
+        </form>
+
+        <h3>History</h3>
+        <ul id="list" class="list">
+            </ul>
+    </div>
+
+    <script>
+        const balance = document.getElementById('balance');
+        const list = document.getElementById('list');
+        const form = document.getElementById('form');
+        const description = document.getElementById('description');
+        const amount = document.getElementById('amount');
+        const type = document.getElementById('type');
+
+        // Retrieve transactions from local storage or start empty
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+        // Generate a random ID for each transaction
+        function generateID() {
+            return Math.floor(Math.random() * 100000000);
+        }
+
+        // Add transaction to the DOM list
+        function addTransactionDOM(transaction) {
+            const sign = transaction.type === 'income' ? '+' : '-';
+            const item = document.createElement('li');
+
+            // Add class based on type
+            item.classList.add(transaction.type);
+
+            item.innerHTML = `
+                ${transaction.description} 
+                <span>${sign}$${Math.abs(transaction.amount).toFixed(2)}</span>
+                <button class="delete-btn" onclick="removeTransaction(${transaction.id})">x</button>
+            `;
+
+            list.appendChild(item);
+        }
+
+        // Update the total balance
+        function updateValues() {
+            const incomeTotal = transactions
+                .filter(item => item.type === 'income')
+                .reduce((acc, item) => acc + item.amount, 0);
+
+            const expenseTotal = transactions
+                .filter(item => item.type === 'expense')
+                .reduce((acc, item) => acc + item.amount, 0);
+
+            const total = (incomeTotal - expenseTotal).toFixed(2);
+
+            balance.innerText = `$${total}`;
+        }
+
+        // Remove transaction by ID
+        function removeTransaction(id) {
+            transactions = transactions.filter(transaction => transaction.id !== id);
+            updateLocalStorage();
+            init();
+        }
+
+        // Update local storage
+        function updateLocalStorage() {
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        // Handle form submission
+        function addTransaction(e) {
+            e.preventDefault();
+
+            if (description.value.trim() === '' || amount.value.trim() === '') {
+                alert('Please add a description and amount');
+                return;
+            }
+
+            const transaction = {
+                id: generateID(),
+                description: description.value,
+                amount: +amount.value,
+                type: type.value
+            };
+
+            transactions.push(transaction);
+            
+            addTransactionDOM(transaction);
+            updateValues();
+            updateLocalStorage();
+
+            description.value = '';
+            amount.value = '';
+        }
+
+        // Initialize app
+        function init() {
+            list.innerHTML = '';
+            transactions.forEach(addTransactionDOM);
+            updateValues();
+        }
+
+        init();
+
+        form.addEventListener('submit', addTransaction);
+    </script>
+</body>
+</html>
